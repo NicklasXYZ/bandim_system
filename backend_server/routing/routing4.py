@@ -22,39 +22,42 @@ class MTSP:
         else:
             self._distance_matrix = None
 
-    def _precompute_distances(self):
-        return numpy.array(
-            [
-                [
-                    numpy.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) for c1 in self.city_coordinates
-                ] for c2 in self.city_coordinates
-            ]
-        )
+    def _precompute_distances(self) -> list[list[float]]:
+        # return numpy.array(
+        #     [
+        #         [
+        #             numpy.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) for c1 in self.city_coordinates
+        #         ] for c2 in self.city_coordinates
+        #     ]
+        # )
+        return [
+            [numpy.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) for c1 in self.city_coordinates]
+            for c2 in self.city_coordinates
+        ]
 
     
-    def distance(self, city_a: int, city_b: int):
+    def distance(self, city_a: int, city_b: int) -> float:
         if self._distance_matrix is not None:
-            print("Precomputed distance: ", self._distance_matrix[city_a][city_b])
             return self._distance_matrix[city_a][city_b]
         else:
-            a = numpy.sqrt(
+            return numpy.sqrt(
                 (self.city_coordinates[city_a][0] - self.city_coordinates[city_b][0]) ** 2 + \
                 (self.city_coordinates[city_a][1] - self.city_coordinates[city_b][1]) ** 2
             )
-            print("Computed distance: ", a)
 
 
 
 class Individual:
 
-    def __init__(self, chromosome: list[list[int]]):
+    def __init__(self, chromosome: list[list[int]], generation: int):
         # Solution representation:
         # - Assume that a multipart chromosome is used
         self.chromosome: list[list[int]] = chromosome
         # The corresponding fitness value of the solution
         self.fitness: None | float = None
+        self.generation: int = generation
 
-    def __str__(self):
+    def pprint(self):
         # Explicitly write out the chomosome when the 'Individual' object is printed
         string = super().__str__()
         if self.chromosome is not None:
@@ -82,21 +85,41 @@ class Population:
     #     for individual in self.individuals:
     #         individual.fitness = self.fitness_function_instance.evaluate(individual)
 
-    # def __str__(self):
-    #     return 
+    def pprint(self):
+        string = ""
+        for inividual in self.individuals:
+            string += inividual.__str__() + "\n"
+        return string
 
     def __len__(self) -> int:
         return len(self.individuals)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> Individual:
         return self.individuals[item]
 
-    def random_pick(self):
+    def __add__(self, other_population):
+        return Population(self.individuals + other_population.individuals)
+
+    def random_pick(self) -> Individual:
         return random.choice(self.individuals)
 
     def size(self) -> int:
         return len(self.individuals)
+    
+    def sort(self, reverse: bool = False):
+        sorted_population = sorted(
+            self.individuals,
+            key=lambda x: x.fitness,
+            reverse=reverse,
+        )
+        self.individuals = sorted_population
+    
+    def prune(self, population_size: int, reverse: bool = False):
+        self.sort(reverse=reverse)
+        self.individuals = self.individuals[:population_size]
 
+    def get_topk(self, k: int = 1) -> list[Individual]:
+        return self.individuals[:k]
 
 class BaseFitnessFunction(abc.ABC):
 
@@ -111,9 +134,10 @@ class BaseFitnessFunction(abc.ABC):
 class FitnessFunctionMinimizeDistance(BaseFitnessFunction):
 
     def __init__(self, mtsp_instance: MTSP):
-        self.mtsp_instance = mtsp_instance
+        super().__init__()
+        self.mtsp_instance: MTSP = mtsp_instance
 
-    def evaluate(self, individual: Individual):
+    def evaluate(self, individual: Individual) -> Individual:
         total_distance = 0.0
         for route in individual.chromosome:
             if len(route) == 0:
@@ -156,12 +180,21 @@ class RandomPopulationInitializer(BasePopulationInitializer):
         partition_points = sorted(random.sample(route[:-1], self.mtsp_instance.num_salesmen - 1))
         individual = Individual(
             chromosome=[route[i:j] for i, j in zip([0] + partition_points, partition_points + [None])],
+            generation=0,
         )
         return individual
 
 class BaseGeneticAlgorithm(abc.ABC):
 
-    def __init__(self, mtsp_instance: MTSP, num_generations: int, population_size: int, mutation_rate: float, population_initializer_class: BasePopulationInitializer, fitness_function_class: BaseFitnessFunction):
+    def __init__(
+        self,
+        mtsp_instance: MTSP,
+        num_generations: int,
+        population_size: int,
+        mutation_rate: float,
+        population_initializer_class: BasePopulationInitializer,
+        fitness_function_class: BaseFitnessFunction
+        ):
         self.mtsp_instance = mtsp_instance
         self.num_generations: int = num_generations
         self.population_size: int = population_size
@@ -215,11 +248,8 @@ class GeneticAlgorithmOrderCrossOver(BaseGeneticAlgorithm):
     def _initialization(self):
         return self.population_initializer_instance.generate()
 
-    def _order_crossover(self, parent1: Individual, parent2: Individual) -> Individual:
+    def _order_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
         child = []
-        print(parent1)
-        print(parent2)
-        print()
 
         p1_flattened = [city for route in parent1.chromosome for city in route]
         p2_flattened = [city for route in parent2.chromosome for city in route]
@@ -236,22 +266,20 @@ class GeneticAlgorithmOrderCrossOver(BaseGeneticAlgorithm):
 
         child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
 
-        individual = Individual(chromosome=child)
+        individual = Individual(chromosome=child, generation=generation)
         return individual
 
-    def _crossover_operator(self, population: Population) -> Population:
+    def _crossover_operator(self, generation: int, population: Population) -> Population:
         children_out = []
         while len(children_out) < self.population_size:
-            parent1 = population.random_pick()# random.choice(population)
-            parent2 = population.random_pick() #random.choice(population)
+            parent1 = population.random_pick() 
+            parent2 = population.random_pick()
             if parent1 != parent2:
-                child = self._order_crossover(parent1, parent2)
+                child = self._order_crossover(generation, parent1, parent2)
                 children_out.append(child)
         return Population(individuals=children_out)
 
-    def _mutation_operator(self, population: Population) -> Population:
-            # for i in range(len(children)):
-            #     children[i] = mutate(children[i], mutation_rate)
+    def _mutation_operator(self, generation: int, population: Population) -> Population:
             children_out = []
             for i in range(len(population)):            
                 routes = population[i].chromosome
@@ -260,76 +288,36 @@ class GeneticAlgorithmOrderCrossOver(BaseGeneticAlgorithm):
                         if random.random() < self.mutation_rate:
                             swap_index = random.randint(0, len(route) - 1)
                             route[i], route[swap_index] = route[swap_index], route[i]
-                individual = Individual(chromosome=routes) # TODO: COMPUTE FITNESS 
+                individual = Individual(chromosome=routes, generation=generation)
                 children_out.append(individual)
             children_out = [self.fitness_function_instance.evaluate(child) for child in children_out]
             return Population(individuals=children_out)
 
-    def _selection_operator(self):
-        pass
+    def _selection_operator(self, generation: int, parent_population: Population, child_population: Population):
+        sorted_population = parent_population + child_population
+        sorted_population.prune(population_size=self.population_size)
+        return sorted_population
 
     def run(self):
-
         population = self._initialization()
 
         # Main loop
         for generation in range(self.num_generations):
+            # Crossover Operation
+            children = self._crossover_operator(generation, population)
 
-            # Crossover
-            children = self._crossover_operator(population)
-            # Mutatoin
-            children = self._mutation_operator(children)
-            break
+            # Mutation Operation 
+            children = self._mutation_operator(generation, children)
 
-        #     # Selection
-        #     self.population = selection(self.population, children)
+            # Selection
+            population = self._selection_operator(generation, population, children)
             
-        #     # Print best individual
-        #     best_individual = min(population, key=lambda x: x.fitness)
+            # Retrieve best individual
+            best_individual = population.get_topk(k=1)
 
-        #     quit()
-
-        #     print(f"Generation {generation + 1}: Best fitness  = {fitness(best_individual.solution)}")
-        #     print(f"                           : Best solution = {best_individual.solution}")
-        #     print()
-
-
-# class BaseFitnessFunction(abc.ABC):
-
-#     def __init__(self):
-#         pass
-
-#     @abc.abstractmethod
-#     def evaluate(self, individual: Individual):
-#         pass
-
-
-# class FitnessFunctionMinimizeDistance(BaseFitnessFunction):
-
-#     def __init__(self, mtsp_instance: MTSP):
-#         self.mtsp_instance = mtsp_instance
-
-#     def evaluate(self, individual: Individual):
-#         total_distance = 0.0
-#         for route in individual.chromosome:
-#             if len(route) == 0:
-#                 distance = numpy.inf
-#             else:
-#                 distance = self.mtsp_instance._distance_matrix[0][route[0]] + self.mtsp_instance._distance_matrix[route[-1]][0]
-#                 for i in range(1, len(route)):
-#                     distance += self.mtsp_instance._distance_matrix[route[i-1]][route[i]]
-#             total_distance += distance
-#         return total_distance
-
-
-    
-
-
-
-
-
-
-
+            print(f"Generation {generation + 1}: Best fitness  = {best_individual[0].fitness}")
+            print(f"                           : Best solution = {best_individual[0].chromosome}")
+            print()
 
 if __name__ == "__main__":
     city_coordinates = [
@@ -347,13 +335,8 @@ if __name__ == "__main__":
         [3.25, 1.0],
         [3.50, 1.0],
     ]
-    # mtsp_instance = MTSP(city_coordinates=city_coordinates, num_salesmen=3, precompute_distances=False)
-    # print(mtsp_instance.distance(1, 0))
-    # print(mtsp_instance.distance(0, 0))
-    # print(mtsp_instance.distance(3, 0))
 
     mtsp_instance = MTSP(city_coordinates=city_coordinates, num_salesmen=3, precompute_distances=True)
-    # ff = FitnessFunctionMinimizeDistance()
     ggoc = GeneticAlgorithmOrderCrossOver(
         mtsp_instance=mtsp_instance,
         num_generations=100,
@@ -364,45 +347,6 @@ if __name__ == "__main__":
     )
 
     final_solution = ggoc.run()
-    # print(pprint.pformat(
-    # print(ggoc.population.individuals[0])
-
-
-
-
-
-
-# ## Problem Parameters
-
-# # Generate random cities and distance matrix
-# cities = [
-#     [2.00, 1.00], # Depot
-
-#     [1.00, 1.00],
-#     [0.75, 1.00],
-#     [0.50, 1.00],
-
-#     [2.00, 2.00],
-#     [2.00, 2.25],
-#     [2.00, 2.50],
-
-#     [3.00, 1.0],
-#     [3.25, 1.0],
-#     [3.50, 1.0],
-# ]
-# n_cities = len(cities)
-# n_salesmen = 3
-# dist_matrix = numpy.array([[numpy.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) for c1 in cities] for c2 in cities])
-
-
-# # GA parameters
-# population_size = 15
-# generations = 20
-# mutation_rate = 0.1
-# elitism = True
-
-
-
 
 
 # # def create_individual_clustering(clusters, n_salesmen):
