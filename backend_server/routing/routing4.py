@@ -14,22 +14,35 @@ random.seed(2023)
 class MTSP:
 
     def __init__(self, city_coordinates: list[list[float]], num_salesmen: int, precompute_distances: bool = True):
+        # Set the given city coordinates
         self.city_coordinates: list[list[float]] = city_coordinates
+        # Set the total number of cities to visit
         self.num_cities: int = len(city_coordinates)
+        # Set the given number of salesmen that should be coordinated and routed between the cities
         self.num_salesmen: int = num_salesmen
+        # Pre-compute the distances between the given cities
         if precompute_distances is True:
             self._distance_matrix = self._precompute_distances()
         else:
             self._distance_matrix = None
+        # Validate the given input
+        self._validate()
+
+    def _validate(self):
+        # Make sure that at least one depot and a city is given in the list
+        if len(self.city_coordinates) < 2:
+            raise ValueError()
+        else:
+            # Make sure that a tuple of coordinates is given for each location
+            for pair in self.city_coordinates:
+                if len(pair) != 2:
+                    raise ValueError()
+        # Make sure that at least one salesman can be routed between the locations
+        if self.num_salesmen < 1:
+            raise ValueError()
+
 
     def _precompute_distances(self) -> list[list[float]]:
-        # return numpy.array(
-        #     [
-        #         [
-        #             numpy.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) for c1 in self.city_coordinates
-        #         ] for c2 in self.city_coordinates
-        #     ]
-        # )
         return [
             [numpy.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) for c1 in self.city_coordinates]
             for c2 in self.city_coordinates
