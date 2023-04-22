@@ -6,6 +6,9 @@ import random
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 
+# from itertools import combinations
+# from sympy.combinatorics import Permutation, PermutationGroup
+
 rng = numpy.random.default_rng(2023)
 random.seed(2023)
 
@@ -360,6 +363,9 @@ if __name__ == "__main__":
     )
 
     final_solution = ggoc.run()
+
+
+
 
 
 # # def create_individual_clustering(clusters, n_salesmen):
