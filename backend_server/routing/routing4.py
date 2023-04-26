@@ -5,6 +5,7 @@ import numpy
 import random
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
+from typing import List 
 
 # from itertools import combinations
 # from sympy.combinatorics import Permutation, PermutationGroup
@@ -265,6 +266,7 @@ class GeneticAlgorithmOrderCrossOver(BaseGeneticAlgorithm):
         return self.population_initializer_instance.generate()
 
     def _order_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+        # order crossover (OX)
         child = []
 
         p1_flattened = [city for route in parent1.chromosome for city in route]
@@ -285,13 +287,179 @@ class GeneticAlgorithmOrderCrossOver(BaseGeneticAlgorithm):
         individual = Individual(chromosome=child, generation=generation)
         return individual
 
+    def _alternating_edges_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+        def build_alternating_edges_graph(parent1_edges, parent2_edges):
+            graph = {}
+            for edge in parent1_edges + parent2_edges:
+                city1, city2 = edge
+                if city1 not in graph:
+                    graph[city1] = []
+                if city2 not in graph:
+                    graph[city2] = []
+                graph[city1].append(city2)
+                graph[city2].append(city1)
+            return graph
+
+        def traverse_alternating_edges_graph(start, graph):
+            visited = set()
+            stack = [start]
+            path = []
+
+            while stack:
+                current = stack.pop()
+                if current not in visited:
+                    visited.add(current)
+                    path.append(current)
+                    for neighbor in graph[current]:
+                        if neighbor not in visited:
+                            stack.append(neighbor)
+            return path
+
+        p1_edges = [(route[i], route[i + 1]) for route in parent1.chromosome for i in range(len(route) - 1)]
+        p2_edges = [(route[i], route[i + 1]) for route in parent2.chromosome for i in range(len(route) - 1)]
+
+        graph = build_alternating_edges_graph(p1_edges, p2_edges)
+        start = next(iter(graph))
+        child_flattened = traverse_alternating_edges_graph(start, graph)
+
+        # partition_points = sorted(random.sample(range(1, len(child_flattened)), self.mtsp_instance.num_salesmen - 1))
+
+        # child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
+
+        # individual = Individual(chromosome=child, generation=generation)
+        # return individual
+        # 
+        print(child_flattened) 
+        num_partition_points = self.mtsp_instance.num_salesmen - 1
+        if num_partition_points >= len(child_flattened) or num_partition_points < 0:
+            raise ValueError("Number of partition points is larger than or equal to the population size, or is negative.")
+
+        partition_points = sorted(random.sample(range(1, len(child_flattened)), num_partition_points))
+
+        child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
+
+        individual = Individual(chromosome=child, generation=generation)
+        return individual
+      
+    def _edge_recombination_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+        # edge recombination crossover (ERX)
+
+        # Combine the parent chromosomes into a single list of cities
+        p1_flattened = [city for route in parent1.chromosome for city in route]
+        p2_flattened = [city for route in parent2.chromosome for city in route]
+
+        # TODO: There should be a better way to retrieve a list of all cities!
+        all_cities = list(set(p1_flattened + p2_flattened))
+        
+        # Create the adjacency list for each city
+        adjacency_lists = {}
+        for city in all_cities:
+            neighbors = set()
+            if city in p1_flattened:
+                idx = p1_flattened.index(city)
+                if idx > 0:
+                    neighbors.add(p1_flattened[idx-1])
+                if idx < len(p1_flattened) - 1:
+                    neighbors.add(p1_flattened[idx+1])
+            if city in p2_flattened:
+                idx = p2_flattened.index(city)
+                if idx > 0:
+                    neighbors.add(p2_flattened[idx-1])
+                if idx < len(p2_flattened) - 1:
+                    neighbors.add(p2_flattened[idx+1])
+            adjacency_lists[city] = neighbors
+
+        # Start with a random city and add it to the child chromosome
+        child_chromosome = [random.choice(all_cities)]
+        
+        # Loop until all cities have been added to the child chromosome
+        while len(child_chromosome) < len(all_cities):
+            current_city = child_chromosome[-1]
+            neighbors = adjacency_lists[current_city]
+            
+            # Remove current city from all neighbor lists
+            for city, neighbor_list in adjacency_lists.items():
+                if current_city in neighbor_list:
+                    neighbor_list.remove(current_city)
+            
+            # Choose the neighbor with the fewest neighbors and add it to the child chromosome
+            if len(neighbors) > 0:
+                fewest_neighbors = min(neighbors, key=lambda x: len(adjacency_lists[x]))
+            else:
+                # If there are no unvisited neighboring cities, choose the next city randomly:
+                # If the neighbors list is empty, it means that the current city does not have any
+                # unvisited neighboring cities. This can happen if the two parents have disconnected
+                # sub-tours, or if the algorithm has reached a dead-end in the graph of neighboring cities.
+                unvisited_cities = set(all_cities) - set(child_chromosome)
+                fewest_neighbors = random.choice(list(unvisited_cities))
+            child_chromosome.append(fewest_neighbors)
+
+            # Choose the neighbor with the fewest neighbors and add it to the child chromosome
+            # fewest_neighbors = min(neighbors, key=lambda x: len(adjacency_lists[x]))
+            # child_chromosome.append(fewest_neighbors)
+
+        # Split the child chromosome into routes
+        partition_points = sorted(random.sample(range(1, len(child_chromosome)), self.mtsp_instance.num_salesmen - 1))
+        child = [child_chromosome[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
+        
+        individual = Individual(chromosome=child, generation=generation)
+        return individual
+
+    def _cycle_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+        # This implementation modifies the original _order_crossover function to implement the cycle crossover
+        # (CX) operation. The main difference is in how the child's flattened chromosome is created. 
+        # Instead of taking a random segment from one parent and filling in with the order from the other parent,
+        # it constructs the child's flattened chromosome using alternating cycles from both parents.
+        # The while loop iterates through the cycles in the parents' chromosomes and alternates between them to
+        # create the child's flattened chromosome. The child's routes are then constructed by partitioning the
+        # flattened chromosome using random partition points.
+        child = []
+
+        p1_flattened = [city for route in parent1.chromosome for city in route]
+        p2_flattened = [city for route in parent2.chromosome for city in route]
+
+        child_flattened = [None] * len(p1_flattened)
+        start = 0
+        remaining_indices = set(range(len(p1_flattened)))
+
+        while remaining_indices:
+            cycle_indices = [start]
+            remaining_indices.remove(start)
+            current = start
+
+            while True:
+                index_in_p2 = p2_flattened.index(p1_flattened[current])
+                current = p1_flattened.index(p2_flattened[index_in_p2])
+
+                if current == start:
+                    break
+
+                cycle_indices.append(current)
+                remaining_indices.remove(current)
+
+            for i in cycle_indices:
+                child_flattened[i] = p1_flattened[i] if len(cycle_indices) % 2 == 1 else p2_flattened[i]
+
+            if remaining_indices:
+                start = min(remaining_indices)
+
+        partition_points = sorted(random.sample(range(1, len(child_flattened)), self.mtsp_instance.num_salesmen - 1))
+
+        child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
+
+        individual = Individual(chromosome=child, generation=generation)
+        return individual
+
     def _crossover_operator(self, generation: int, population: Population) -> Population:
         children_out = []
         while len(children_out) < self.population_size:
             parent1 = population.random_pick() 
             parent2 = population.random_pick()
             if parent1 != parent2:
-                child = self._order_crossover(generation, parent1, parent2)
+                # child = self._order_crossover(generation, parent1, parent2)
+                # child = self._edge_recombination_crossover(generation, parent1, parent2)
+                # child = self._cycle_crossover(generation, parent1, parent2)
+                child = self._alternating_edges_crossover(generation, parent1, parent2)
                 children_out.append(child)
         return Population(individuals=children_out)
 
