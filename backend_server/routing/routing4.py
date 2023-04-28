@@ -287,60 +287,229 @@ class GeneticAlgorithmOrderCrossOver(BaseGeneticAlgorithm):
         individual = Individual(chromosome=child, generation=generation)
         return individual
 
+    # def _alternating_edges_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+    #     def build_alternating_edges_graph(parent1_edges, parent2_edges):
+    #         graph = {}
+    #         for edge in parent1_edges + parent2_edges:
+    #             city1, city2 = edge
+    #             if city1 not in graph:
+    #                 graph[city1] = []
+    #             if city2 not in graph:
+    #                 graph[city2] = []
+    #             graph[city1].append(city2)
+    #             graph[city2].append(city1)
+    #         return graph
+
+    #     def traverse_alternating_edges_graph(start, graph):
+    #         visited = set()
+    #         stack = [start]
+    #         path = []
+
+    #         while stack:
+    #             current = stack.pop()
+    #             if current not in visited:
+    #                 visited.add(current)
+    #                 path.append(current)
+    #                 for neighbor in graph[current]:
+    #                     if neighbor not in visited:
+    #                         stack.append(neighbor)
+    #         return path
+
+    #     p1_edges = [(route[i], route[i + 1]) for route in parent1.chromosome for i in range(len(route) - 1)]
+    #     p2_edges = [(route[i], route[i + 1]) for route in parent2.chromosome for i in range(len(route) - 1)]
+
+    #     graph = build_alternating_edges_graph(p1_edges, p2_edges)
+    #     start = next(iter(graph))
+    #     child_flattened = traverse_alternating_edges_graph(start, graph)
+
+    #     # partition_points = sorted(random.sample(range(1, len(child_flattened)), self.mtsp_instance.num_salesmen - 1))
+
+    #     # child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
+
+    #     # individual = Individual(chromosome=child, generation=generation)
+    #     # return individual
+    #     # 
+    #     print(child_flattened) 
+    #     num_partition_points = self.mtsp_instance.num_salesmen - 1
+    #     if num_partition_points >= len(child_flattened) or num_partition_points < 0:
+    #         raise ValueError("Number of partition points is larger than or equal to the population size, or is negative.")
+
+    #     partition_points = sorted(random.sample(range(1, len(child_flattened)), num_partition_points))
+
+    #     child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
+
+    #     individual = Individual(chromosome=child, generation=generation)
+    #     return individual
+
+    # def _alternating_edges_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+    #     child = []
+    #     visited = set()
+
+    #     p1_flattened = [city for route in parent1.chromosome for city in route]
+    #     p2_flattened = [city for route in parent2.chromosome for city in route]
+
+    #     for i in range(self.mtsp_instance.num_salesmen):
+    #         if i % 2 == 0:
+    #             current, other = p1_flattened, p2_flattened
+    #         else:
+    #             current, other = p2_flattened, p1_flattened
+
+    #         start = random.randint(0, len(current) - self.mtsp_instance.num_salesmen)
+    #         route = [current[start]]
+
+    #         visited.add(current[start])
+
+    #         # for _ in range(self.mtsp_instance.salesmen_lengths[i] - 1):
+    #         for _ in range(self.mtsp_instance.salesmen_lengths[i] - 1):
+    #             current_index = current.index(route[-1])
+    #             neighbors = [current[(current_index + 1) % len(current)], current[(current_index - 1) % len(current)]]
+    #             available_neighbors = [n for n in neighbors if n not in visited]
+
+    #             if available_neighbors:
+    #                 next_city = min(available_neighbors, key=lambda n: self.mtsp_instance._distance_matrix[route[-1]][n])
+    #                 visited.add(next_city)
+    #                 route.append(next_city)
+    #             else:
+    #                 next_city = min(set(current) - visited, key=lambda n: self.mtsp_instance._distance_matrix[route[-1]][n])
+    #                 visited.add(next_city)
+    #                 route.append(next_city)
+
+    #         child.append(route)
+
+    #         p1_flattened = [c for c in p1_flattened if c not in route]
+    #         p2_flattened = [c for c in p2_flattened if c not in route]
+
+    #     individual = Individual(chromosome=child, generation=generation)
+    #     return individual
+
+    # def _alternating_edges_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+    #         child = [[] for i in range(self.mtsp_instance.num_salesmen)]
+
+    #         p1_flattened = [city for route in parent1.chromosome for city in route]
+    #         p2_flattened = [city for route in parent2.chromosome for city in route]
+
+    #         city_count = len(p1_flattened)
+    #         edges = [(p1_flattened[i], p1_flattened[(i+1) % city_count], p2_flattened[i], p2_flattened[(i+1) % city_count]) for i in range(city_count)]
+
+    #         for i in range(city_count):
+    #             for j in range(self.mtsp_instance.num_salesmen):
+    #                 if p1_flattened[i] in parent1.chromosome[j]:
+    #                     route_idx = j
+    #                     break
+    #             if not child[route_idx]:
+    #                 child[route_idx].append(p1_flattened[i])
+    #             if (p1_flattened[i], p1_flattened[(i+1) % city_count], p2_flattened[i], p2_flattened[(i+1) % city_count]) in edges:
+    #                 route_idx = (route_idx + 1) % self.mtsp_instance.num_salesmen
+    #             child[route_idx].append(p1_flattened[(i+1) % city_count])
+
+    #         individual = Individual(chromosome=child, generation=generation)
+    #         return individual
+
+    # def _alternating_edges_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
+    #     def edges_from_chromosome(chromosome: List[List[int]]):
+    #         edges = []
+    #         for route in chromosome:
+    #             for i in range(len(route)):
+    #                 edges.append((route[i], route[(i + 1) % len(route)]))
+    #         return edges
+
+    #     def rebuild_chromosome(edges: List, num_salesmen: int) -> List[List[int]]:
+    #         used_nodes = set()
+    #         routes = []
+
+    #         for _ in range(num_salesmen):
+    #             route = []
+    #             for edge in edges:
+    #                 if edge[0] not in used_nodes and edge[1] not in used_nodes:
+    #                     route.append(edge[0])
+    #                     used_nodes.add(edge[0])
+    #                     used_nodes.add(edge[1])
+    #                     break
+
+    #             current_node = route[-1]
+    #             while current_node != route[0]:
+    #                 for edge in edges:
+    #                     if edge[0] == current_node and edge[1] not in used_nodes:
+    #                         current_node = edge[1]
+    #                         used_nodes.add(current_node)
+    #                         route.append(current_node)
+    #                         break
+    #             routes.append(route)
+    #         return routes
+
+    #     p1_edges = edges_from_chromosome(parent1.chromosome)
+    #     p2_edges = edges_from_chromosome(parent2.chromosome)
+
+    #     child_edges = []
+    #     for i in range(len(p1_edges)):
+    #         if i % 2 == 0:
+    #             child_edges.append(p1_edges[i])
+    #         else:
+    #             child_edges.append(p2_edges[i])
+
+    #     child_chromosome = rebuild_chromosome(child_edges, self.mtsp_instance.num_salesmen)
+
+    #     child = Individual(chromosome=child_chromosome, generation=generation)
+    #     return child
+
     def _alternating_edges_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
-        def build_alternating_edges_graph(parent1_edges, parent2_edges):
-            graph = {}
-            for edge in parent1_edges + parent2_edges:
-                city1, city2 = edge
-                if city1 not in graph:
-                    graph[city1] = []
-                if city2 not in graph:
-                    graph[city2] = []
-                graph[city1].append(city2)
-                graph[city2].append(city1)
-            return graph
+        def edges_from_chromosome(chromosome: List[List[int]]):
+            edges = []
+            for route in chromosome:
+                for i in range(len(route)):
+                    edges.append((route[i], route[(i + 1) % len(route)]))
+            return edges
 
-        def traverse_alternating_edges_graph(start, graph):
-            visited = set()
-            stack = [start]
-            path = []
+        def rebuild_chromosome(edges: List, num_salesmen: int) -> List[List[int]]:
+            used_nodes = set()
+            routes = []
 
-            while stack:
-                current = stack.pop()
-                if current not in visited:
-                    visited.add(current)
-                    path.append(current)
-                    for neighbor in graph[current]:
-                        if neighbor not in visited:
-                            stack.append(neighbor)
-            return path
+            for _ in range(num_salesmen):
+                route = []
+                for edge in edges:
+                    if edge[0] not in used_nodes and edge[1] not in used_nodes:
+                        route.append(edge[0])
+                        used_nodes.add(edge[0])
+                        used_nodes.add(edge[1])
+                        break
+                print("Used nodes  : ", used_nodes)
 
-        p1_edges = [(route[i], route[i + 1]) for route in parent1.chromosome for i in range(len(route) - 1)]
-        p2_edges = [(route[i], route[i + 1]) for route in parent2.chromosome for i in range(len(route) - 1)]
+                current_node = route[-1] if route else None
+                while current_node and current_node != route[0]:
+                    for edge in edges:
+                        if edge[0] == current_node and edge[1] not in used_nodes:
+                            current_node = edge[1]
+                            used_nodes.add(current_node)
+                            route.append(current_node)
+                            break
+                    else:
+                        current_node = None
+                routes.append(route)
+            return routes
 
-        graph = build_alternating_edges_graph(p1_edges, p2_edges)
-        start = next(iter(graph))
-        child_flattened = traverse_alternating_edges_graph(start, graph)
+        p1_edges = edges_from_chromosome(parent1.chromosome)
+        p2_edges = edges_from_chromosome(parent2.chromosome)
+        print(p2_edges)
+        print(p1_edges)
+        print()
+        print()
 
-        # partition_points = sorted(random.sample(range(1, len(child_flattened)), self.mtsp_instance.num_salesmen - 1))
 
-        # child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
+        child_edges = []
+        for i in range(len(p1_edges)):
+            if i % 2 == 0:
+                child_edges.append(p1_edges[i])
+            else:
+                child_edges.append(p2_edges[i])
 
-        # individual = Individual(chromosome=child, generation=generation)
-        # return individual
-        # 
-        print(child_flattened) 
-        num_partition_points = self.mtsp_instance.num_salesmen - 1
-        if num_partition_points >= len(child_flattened) or num_partition_points < 0:
-            raise ValueError("Number of partition points is larger than or equal to the population size, or is negative.")
+        print("Child nodes : ", child_edges)
 
-        partition_points = sorted(random.sample(range(1, len(child_flattened)), num_partition_points))
+        child_chromosome = rebuild_chromosome(child_edges, self.mtsp_instance.num_salesmen)
+        quit()
 
-        child = [child_flattened[i:j] for i, j in zip([0] + partition_points, partition_points + [None])]
-
-        individual = Individual(chromosome=child, generation=generation)
-        return individual
-      
+        child = Individual(chromosome=child_chromosome, generation=generation)
+        return child
+        
     def _edge_recombination_crossover(self, generation: int, parent1: Individual, parent2: Individual) -> Individual:
         # edge recombination crossover (ERX)
 
