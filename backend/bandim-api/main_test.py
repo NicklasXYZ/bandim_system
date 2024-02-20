@@ -142,6 +142,23 @@ def get_dataset_succeed(client: TestClient, dataset_uid, locations):
     assert "updated_at" in res
     return res
 
+def create_workplan_succeed(client: TestClient, dataset_uid, locations):
+    req = {"name": dataset_name, "uid": locations}
+    response = client.post(
+        "/api/public/workplans/",
+        json=req,
+    )
+    assert response.status_code == 200
+    res = response.json()
+    assert "uid" in res
+    assert "name" in res
+    assert "locations" in res
+    assert "uid" in res["locations"][0]
+    assert "uid" in res["locations"][1]
+    assert "created_at" in res
+    assert "updated_at" in res
+    return res
+
 
 def test_create_dataset_succeed(client: TestClient):
     locations_res = create_bulk_locations_succeed(client=client)
@@ -152,6 +169,11 @@ def test_create_dataset_succeed(client: TestClient):
     get_dataset_succeed(
         client=client, dataset_uid=dataset_res["uid"], locations=locations
     )
+
+
+
+
+
 
 
 # def test_create_locations_fail(client: TestClient):
