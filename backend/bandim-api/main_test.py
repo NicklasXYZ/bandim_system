@@ -96,6 +96,7 @@ def get_location_succeed(client: TestClient, location_uid):
     res = response.json()
     assert "uid" in res
     assert "datasets" in res
+    assert "depot" in res
     assert "routes" in res
     return res
 

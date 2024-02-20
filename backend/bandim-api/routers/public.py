@@ -15,10 +15,10 @@ from models import (
     LocationReadCompact,
     LocationReadDetails,
     WorkPlan,
+    WorkPlanRead,
+    WorkPlanCreate,
     Identifier,
-    # PlanRead,
     Route,
-    # RouteRead,
 )
 import uuid
 
@@ -151,12 +151,24 @@ async def read_dataset(
 #     return db_dataset
 
 
-# @router.get("/plans/{plan_uid}", response_model=PlanRead, tags=["plans"])
-# async def read_plan(*, session: Session = Depends(get_session), plan_uid: uuid.UUID):
-#     db_plan = session.get(Plan, plan_uid)
-#     if not db_plan:
-#         raise HTTPException(status_code=404, detail="Plan not found")
-#     return db_plan
+
+@router.post("/workplans/", response_model=WorkPlanRead, tags=["workplans"])
+async def create_workplan(
+    *, session: Session = Depends(get_session), workplan: WorkPlanCreate
+):
+    db_workplan = WorkPlan.model_validate(workplan)
+    session.add(db_workplan)
+    session.commit()
+    session.refresh(db_workplan)
+    return db_workplan
+
+@router.get("/workplans/{workplan_uid}", response_model=WorkPlanRead, tags=["workplans"])
+async def read_plan(*, session: Session = Depends(get_session), workplan_uid: uuid.UUID):
+    db_workplan = session.get(WorkPlan, workplan_uid)
+    if not db_workplan:
+        raise HTTPException(status_code=404, detail="WorkPlan not found")
+    return db_workplan
+
 
 
 # @router.get("/routes/{route_uid}", response_model=RouteRead, tags=["routes"])

@@ -36,6 +36,7 @@ class LocationTimestampLink(SQLModel, table=True):
 class BaseLocation(SQLModel):
     latitude: float = Field(index=True)
     longitude: float = Field(index=True)
+    depot: bool = Field(default=False, index=True)
 
 
 class Location(BaseLocation, table=True):
@@ -59,10 +60,12 @@ class LocationCreate(BaseLocation):
 
 class LocationReadCompact(BaseLocation):
     uid: uuid.UUID
+    depot: bool
 
 
 class LocationReadDetails(BaseLocation):
     uid: uuid.UUID
+    depot: bool
     datasets: list["DataSet"]
     routes: list["Route"]
 
