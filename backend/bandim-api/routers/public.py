@@ -19,6 +19,8 @@ from models import (
     WorkPlanCreate,
     Identifier,
     Route,
+    RouteRead,
+    RouteCreate,
 )
 import uuid
 
@@ -151,7 +153,6 @@ async def read_dataset(
 #     return db_dataset
 
 
-
 @router.post("/workplans/", response_model=WorkPlanRead, tags=["workplans"])
 async def create_workplan(
     *, session: Session = Depends(get_session), workplan: WorkPlanCreate
@@ -160,20 +161,79 @@ async def create_workplan(
     session.add(db_workplan)
     session.commit()
     session.refresh(db_workplan)
-    return db_workplan
+    # For consistency add (empty) route data associated with the workplan
+    statement = select(Route).where(Route.workplan_uid == db_workplan.uid)
+    db_routes = session.exec(statement).all()
+    workplan_dict = db_workplan.model_dump()
+    workplan_dict["routes"] = db_routes
+    return WorkPlanRead(**workplan_dict)
 
-@router.get("/workplans/{workplan_uid}", response_model=WorkPlanRead, tags=["workplans"])
-async def read_plan(*, session: Session = Depends(get_session), workplan_uid: uuid.UUID):
+
+@router.get(
+    "/workplans/{workplan_uid}", response_model=WorkPlanRead, tags=["workplans"]
+)
+async def read_workplan(
+    *, session: Session = Depends(get_session), workplan_uid: uuid.UUID
+):
     db_workplan = session.get(WorkPlan, workplan_uid)
     if not db_workplan:
         raise HTTPException(status_code=404, detail="WorkPlan not found")
-    return db_workplan
+    # For consistency add (empty) route data associated with the workplan
+    statement = select(Route).where(Route.workplan_uid == db_workplan.uid)
+    db_routes = session.exec(statement).all()
+    workplan_dict = db_workplan.model_dump()
+    workplan_dict["routes"] = db_routes
+    return WorkPlanRead(**workplan_dict)
 
 
+# @router.post("/workplans/assign", response_model=WorkPlanRead, tags=["workplans"])
+@router.post("/workplans/assign", tags=["workplans"])
+async def assign_workplan(
+    *, session: Session = Depends(get_session), workplan: Identifier
+):
+    db_workplan = session.get(WorkPlan, workplan.uid)
+    db_dataset = session.get(DataSet, db_workplan.dataset_uid)
+    print(db_dataset.locations)
+    
+    # statement = select(Location, DataSet).where(Location.dataset_uid == DataSet.uid)
+    # results = session.exec(statement)
+    # for hero, team in results:
+    #     print("Hero:", hero, "Team:", team)
+    
+    # db_workplan = WorkPlan.model_validate(workplan)
+    # session.add(db_workplan)
+    # session.commit()
+    # session.refresh(db_workplan)
+    # For consistency add (empty) route data associated with the workplan
+    # statement = select(Route).where(Route.workplan_uid == db_workplan.uid)
+    # db_routes = session.exec(statement).all()
+    # workplan_dict = db_workplan.model_dump()
+    # workplan_dict["routes"] = db_routes
+    # return WorkPlanRead(**workplan_dict)
+    return {}
 
-# @router.get("/routes/{route_uid}", response_model=RouteRead, tags=["routes"])
-# async def read_route(*, session: Session = Depends(get_session), route_uid: uuid.UUID):
-#     db_route = session.get(Route, route_uid)
-#     if not db_route:
-#         raise HTTPException(status_code=404, detail="Route not found")
+# @router.post("/routes/", response_model=RouteRead, tags=["routes"])
+# async def create_route(
+#     *, session: Session = Depends(get_session), route: RouteCreate
+# ):
+#     db_route = WorkPlan.model_validate(route)
+#     session.add(db_route)
+#     session.commit()
+#     session.refresh(db_route)
+#     # For consistency add (empty) route data associated with the workplan
+#     # statement = select(Route).where(Route.workplan_uid == db_workplan.uid)
+#     # db_routes = session.exec(statement).all()
+#     # workplan_dict = db_workplan.model_dump()
+#     # workplan_dict["routes"] = db_routes
+#     # return WorkPlanRead(**workplan_dict)
 #     return db_route
+
+# @router.post("/routes/", response_model=RouteRead, tags=["routes"])
+
+
+@router.get("/routes/{route_uid}", response_model=RouteRead, tags=["routes"])
+async def read_route(*, session: Session = Depends(get_session), route_uid: uuid.UUID):
+    db_route = session.get(Route, route_uid)
+    if not db_route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    return db_route

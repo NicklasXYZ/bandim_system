@@ -156,6 +156,7 @@ class RouteRead(BaseDataSet):
 class BaseWorkPlan(SQLModel):
     start_time: dt.datetime = Field(nullable=False)
     end_time: dt.datetime = Field(nullable=False)
+    workers: int = Field(nullable=False)
     dataset_uid: uuid.UUID = Field(default=None, foreign_key="dataset.uid")
 
 
@@ -171,6 +172,7 @@ class WorkPlan(BaseWorkPlan, table=True):
 
 class WorkPlanRead(BaseWorkPlan):
     uid: uuid.UUID
+    updated_at: dt.datetime
     routes: list["Route"]
 
 
