@@ -33,6 +33,44 @@ class LocationTimestampLink(SQLModel, table=True):
     )
 
 
+class BaseLocation(SQLModel):
+    latitude: float = Field(index=True)
+    longitude: float = Field(index=True)
+
+
+class Location(BaseLocation, table=True):
+    uid: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    datasets: list["DataSet"] = Relationship(
+        back_populates="locations", link_model=DataSetLocationLink
+    )
+    routes: list["Route"] = Relationship(
+        back_populates="locations", link_model=RouteLocationLink
+    )
+
+
+class LocationCreate(BaseLocation):
+    pass
+
+
+class LocationReadCompact(BaseLocation):
+    uid: uuid.UUID
+
+
+class LocationReadDetails(BaseLocation):
+    uid: uuid.UUID
+    datasets: list["DataSet"]
+    routes: list["Route"]
+
+
+class Identifier(SQLModel):
+    uid: uuid.UUID
+
+
 class BaseDataSet(SQLModel):
     name: str = Field(index=True)
 
@@ -52,35 +90,21 @@ class DataSet(BaseDataSet, table=True):
 
 
 class DataSetCreate(BaseDataSet):
-    locations: Optional[list["Location"]]
+    locations: Optional[list["Identifier"]]
 
 
 class DataSetUpdate(BaseDataSet):
     locations: Optional[list["Location"]]
 
 
-class DataSetRead(BaseDataSet):
+class DataSetReadCompact(BaseDataSet):
     uid: uuid.UUID
     created_at: dt.datetime
     updated_at: dt.datetime
+
+
+class DataSetReadDetails(DataSetReadCompact):
     locations: list["Location"]
-
-
-class Location(SQLModel, table=True):
-    uid: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
-        primary_key=True,
-        index=True,
-        nullable=False,
-    )
-    latitude: float = Field(index=True)
-    longitude: float = Field(index=True)
-    datasets: list["DataSet"] = Relationship(
-        back_populates="locations", link_model=DataSetLocationLink
-    )
-    routes: list["Route"] = Relationship(
-        back_populates="locations", link_model=RouteLocationLink
-    )
 
 
 class Timestamp(SQLModel, table=True):

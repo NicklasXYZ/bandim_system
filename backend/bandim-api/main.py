@@ -33,19 +33,19 @@ from models import DataSet, Location
 tags_metadata = [
     {
         "name": "datasets",
-        "description": "Operations on datasets primarily consisting of one or more locations.",
+        "description": "Operations on datasets, which primarily consist of one or more locations. Each dataset represents a logical grouping of locations.",
     },
     {
         "name": "locations",
-        "description": " Operations on locations primarily consisting of latitude and longitude coordinates.",
+        "description": "Operations on locations, which primarily consist of latitude and longitude coordinates. Each location represents the location of a household.",
     },
     {
         "name": "routes",
-        "description": " Operations on rotues primarily consisting of a sequence of locations.",
+        "description": "Operations on rotues primarily consisting of an ordered sequence of locations. Each route is associated with a health worker and a workplan.",
     },
     {
-        "name": "plans",
-        "description": "Operations on collections of routes associated with a specific dataset.",
+        "name": "workplans",
+        "description": "Operations on workplans (associated with a specific dataset), which primarily consist of a collection of routes with additional time-specific information.",
     },
     {
         "name": "default",
