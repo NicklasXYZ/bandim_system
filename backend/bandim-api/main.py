@@ -41,7 +41,7 @@ tags_metadata = [
     },
     {
         "name": "routes",
-        "description": "Operations on rotues primarily consisting of an ordered sequence of locations. Each route is associated with a health worker and a workplan.",
+        "description": "Operations on rotues primarily consisting of an ordered sequence of locations. Each route is associated with a worker and a workplan.",
     },
     {
         "name": "workplans",

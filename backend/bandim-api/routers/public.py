@@ -2,6 +2,13 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import insert
 
+from vrp_solver.vrp_solver import (
+    VRP,
+    TwoOptSolver,
+    KMeansRadomizedPopulationInitializer,
+    FitnessFunctionMinimizeDistance,
+    individual_to_routes,
+)
 from pydantic import TypeAdapter
 from database import engine
 from models import (
@@ -23,6 +30,7 @@ from models import (
     RouteCreate,
 )
 import uuid
+import pandas as pd
 
 router = APIRouter()
 
@@ -193,13 +201,53 @@ async def assign_workplan(
 ):
     db_workplan = session.get(WorkPlan, workplan.uid)
     db_dataset = session.get(DataSet, db_workplan.dataset_uid)
-    print(db_dataset.locations)
-    
+    if not db_dataset:
+        raise HTTPException(
+            status_code=404,
+            detail="A WorkPlan could not be created due to unknown dataset",
+        )
+    # print(db_dataset.locations)
+    data = [
+        {
+            "latitude": loc.latitude,
+            "longitude": loc.longitude,
+            "depot": loc.depot,
+            "demand": loc.demand,
+        }
+        for loc in db_dataset.locations
+    ]
+    df = pd.DataFrame(data=data).sort_values(by="depot", ascending=False)
+    locations = df[["latitude", "longitude"]].to_numpy().tolist()
+
+    vrp_instance = VRP(
+        locations=locations,
+        num_salesmen=db_workplan.workers,
+        precompute_distances=True,
+    )
+    solver = TwoOptSolver(
+        vrp_instance=vrp_instance,
+        population_size=25,
+        population_initializer_class=KMeansRadomizedPopulationInitializer,
+        # population_initializer_class=RandomPopulationInitializer,
+        fitness_function_class=FitnessFunctionMinimizeDistance,
+    )
+
+    result = solver.run()
+    best_solution = result.get_topk(k=1)[0]
+    print("Fitness: ", best_solution.fitness)
+    routes = individual_to_routes(best_solution, vrp_instance)
+
+    for route in routes:
+        print("\nNew Route:")
+        print(route)
+
+    # plot_salesmen_routes(routes)
+
     # statement = select(Location, DataSet).where(Location.dataset_uid == DataSet.uid)
     # results = session.exec(statement)
     # for hero, team in results:
     #     print("Hero:", hero, "Team:", team)
-    
+
     # db_workplan = WorkPlan.model_validate(workplan)
     # session.add(db_workplan)
     # session.commit()
@@ -211,6 +259,7 @@ async def assign_workplan(
     # workplan_dict["routes"] = db_routes
     # return WorkPlanRead(**workplan_dict)
     return {}
+
 
 # @router.post("/routes/", response_model=RouteRead, tags=["routes"])
 # async def create_route(
