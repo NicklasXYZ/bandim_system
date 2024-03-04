@@ -8,7 +8,6 @@ from enum import Enum
 from pydantic import BaseModel
 
 
-
 class DataSetLocationLink(SQLModel, table=True):
     dataset_uid: uuid.UUID = Field(
         default=None, foreign_key="dataset.uid", primary_key=True
@@ -27,13 +26,13 @@ class RouteLocationLink(SQLModel, table=True):
     )
 
 
-class LocationTimestampLink(SQLModel, table=True):
-    location_uid: uuid.UUID = Field(
-        default=None, foreign_key="location.uid", primary_key=True
-    )
-    timestamp_uid: uuid.UUID = Field(
-        default=None, foreign_key="timestamp.uid", primary_key=True
-    )
+# class LocationTimestampLink(SQLModel, table=True):
+#     location_uid: uuid.UUID = Field(
+#         default=None, foreign_key="location.uid", primary_key=True
+#     )
+#     timestamp_uid: uuid.UUID = Field(
+#         default=None, foreign_key="timestamp.uid", primary_key=True
+#     )
 
 
 class BaseAlgorithmRun(SQLModel):
@@ -69,6 +68,7 @@ class Location(BaseLocation, table=True):
     routes: list["Route"] = Relationship(
         back_populates="locations", link_model=RouteLocationLink
     )
+    # timestamps: list["Timestamp"] = Relationship(back_populates="location")
 
 
 class LocationCreate(BaseLocation):
@@ -162,7 +162,6 @@ class Timestamp(BaseTimestamp, table=True):
 
 
 class TimestampCreate(BaseTimestamp):
-    uid: uuid.UUID
     datetime: dt.datetime
     route_uid: uuid.UUID
     location_uid: uuid.UUID

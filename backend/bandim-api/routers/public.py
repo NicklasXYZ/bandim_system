@@ -81,7 +81,7 @@ async def read_locations(
     *,
     session: Session = Depends(get_session),
     offset: int = 0,
-    limit: int = Query(default=100, le=100)
+    limit: int = Query(default=100, le=100),
 ):
     db_locations = session.exec(select(Location).offset(offset).limit(limit)).all()
     return db_locations
@@ -129,7 +129,7 @@ async def read_datasets(
     *,
     session: Session = Depends(get_session),
     offset: int = 0,
-    limit: int = Query(default=100, le=100)
+    limit: int = Query(default=100, le=100),
 ):
     db_datasets = session.exec(select(DataSet).offset(offset).limit(limit)).all()
     return db_datasets
@@ -225,9 +225,21 @@ async def assign_workplan(
         }
         for loc in db_dataset.locations
     ]
-    df = pd.DataFrame(data=data).astype({"latitude": "float64", "longitude": "float64", "depot": "bool", "demand": "int64", "uid": "object"}).sort_values(by="depot", ascending=False)
+    df = (
+        pd.DataFrame(data=data)
+        .astype(
+            {
+                "latitude": "float64",
+                "longitude": "float64",
+                "depot": "bool",
+                "demand": "int64",
+                "uid": "object",
+            }
+        )
+        .sort_values(by="depot", ascending=False)
+    )
     locations = df[["latitude", "longitude"]].to_numpy().tolist()
-    
+
     vrp_instance = VRP(
         locations=locations,
         num_salesmen=db_workplan.workers,
@@ -238,7 +250,9 @@ async def assign_workplan(
     n = len(locations)
     population_maximum = 10_000
     population_minimum = 25
-    population_size = np.minimum(np.maximum(population_minimum, int(n / np.log2(n))), population_maximum)
+    population_size = np.minimum(
+        np.maximum(population_minimum, int(n / np.log2(n))), population_maximum
+    )
     solver = TwoOptSolver(
         vrp_instance=vrp_instance,
         population_size=population_size,
@@ -250,18 +264,25 @@ async def assign_workplan(
     best_solution = result.get_topk(k=1)[0]
     # print("Fitness: ", best_solution.fitness)
     routes = individual_to_routes(best_solution, vrp_instance)
-    
-    data = [] 
+
+    data = []
     for i in range(len(routes)):
         for j in range(len(routes[i])):
             d = {
-                "latitude": routes[i][j][0], 
+                "latitude": routes[i][j][0],
                 "longitude": routes[i][j][1],
                 "route": i,
                 "visit_number": j,
             }
             data.append(d)
-    ndf = pd.DataFrame(data=data).astype({"latitude": "float64", "longitude": "float64", "route": "int64", "visit_number": "int64"})
+    ndf = pd.DataFrame(data=data).astype(
+        {
+            "latitude": "float64",
+            "longitude": "float64",
+            "route": "int64",
+            "visit_number": "int64",
+        }
+    )
     merged_dfs = pd.merge(df, ndf, on=["latitude", "longitude"])
     merged_dfs = merged_dfs.sort_values(by="visit_number", ascending=True)
 
@@ -270,32 +291,50 @@ async def assign_workplan(
     # Add generated routes to the database
     for _, _df in merged_dfs.groupby("route"):
 
-        # primary_keys_list = _df["uid"].to_numpy().tolist()
-        # print(_df)
-        
+        primary_keys_list = _df["uid"].to_numpy().tolist()
+        statement = select(Location).where(Location.uid.in_(primary_keys_list))
+        locations = session.exec(statement).all()
+        route = RouteCreate(
+            locations=locations,
+            workplan_uid=workplan.uid,
+            algorithmrun_uid=uuid.uuid4(),
+        )
+        db_route = Route.model_validate(route)
+        # Add the data to the database
+        session.add(db_route)
+        session.commit()
+        session.refresh(db_route)
+
         current_time = db_workplan.start_time
-        # Set the routing cost in terms of time
-        default_time = dt.timedelta(seconds=120) 
+        # TODO: Set the routing cost in terms of time
+        default_time = dt.timedelta(seconds=120)
         for _, row in _df.iterrows():
             current_time += default_time + visit_duration * row["demand"]
-            print(current_time)
-            print(row)
-            break
+            # print(current_time)
+            # print(row)
+            timestamp = TimestampCreate(
+                datetime=current_time,
+                route_uid=db_route.uid,
+                location_uid=row["uid"],
+            )
+            db_timestamp = Timestamp.model_validate(timestamp)
+            # Add the data to the database
+            session.add(db_timestamp)
+            session.commit()
+            session.refresh(db_timestamp)
 
-    #     # timestamp = TimestampCreate()
-
-    #     statement = select(Location).where(Location.uid.in_(primary_keys_list))
-    #     locations = session.exec(statement).all()
-    #     route = RouteCreate(
-    #         locations=locations,
-    #         workplan_uid=workplan.uid,
-    #         algorithmrun_uid=uuid.uuid4(),
-    #     )
-    #     db_route = Route.model_validate(route)
-    #     # Add the data to the database
-    #     session.add(db_route)
-    #     session.commit()
-    #     session.refresh(db_route)
+        query = (
+            select(Location, Timestamp.datetime)
+            .join(Timestamp, Timestamp.location_uid == Location.uid)
+            .where(Timestamp.route_uid == db_route.uid)
+            .order_by(Timestamp.datetime)
+        )
+        results = session.exec(query).all()
+        locations_with_timestamps = [
+            {"location": result[0], "timestamp": result[1]} for result in results
+        ]
+        print("locations_with_timestamps: ")
+        print(locations_with_timestamps)
 
     # statement = select(Route).where(Route.workplan_uid == db_workplan.uid)
     # db_routes = session.exec(statement).all()
@@ -306,7 +345,7 @@ async def assign_workplan(
     #     print(route.locations)
     #     print()
     # return WorkPlanReadDetails(**workplan_dict)
-        
+
     # LocationTimestampReadDetails
     return {}
 
