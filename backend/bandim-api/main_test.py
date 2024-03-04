@@ -242,7 +242,7 @@ def test_route_assignment(client: TestClient):
     # Using the data set with added locations, create a workplan
     # for a number of workers
     start_time = datetime.utcnow()
-    end_time = start_time + timedelta(hours=1)
+    end_time = start_time + timedelta(hours=6)
     req = {
         "dataset_uid": dataset_res["uid"],
         "start_time": str(start_time),
@@ -257,7 +257,6 @@ def test_route_assignment(client: TestClient):
     workplan_res = response.json()
 
     # Assign routes and schedules for 3 workers
-
     start_time = datetime.utcnow()
     end_time = start_time + timedelta(hours=1)
     req = {

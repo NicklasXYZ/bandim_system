@@ -4,6 +4,9 @@ from sqlmodel import Field, Relationship, SQLModel
 import uuid
 import datetime as dt
 from sqlalchemy import Column, DateTime, func
+from enum import Enum
+from pydantic import BaseModel
+
 
 
 class DataSetLocationLink(SQLModel, table=True):
@@ -31,6 +34,19 @@ class LocationTimestampLink(SQLModel, table=True):
     timestamp_uid: uuid.UUID = Field(
         default=None, foreign_key="timestamp.uid", primary_key=True
     )
+
+
+class BaseAlgorithmRun(SQLModel):
+    uid: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+
+
+class AlgorithmRun(BaseAlgorithmRun, table=True):
+    pass
 
 
 class BaseLocation(SQLModel):
@@ -65,8 +81,15 @@ class LocationReadCompact(BaseLocation):
 
 class LocationReadDetails(BaseLocation):
     uid: uuid.UUID
+    # TODO: Specify DataSetRead model
     datasets: list["DataSet"]
+    # TODO: Specify RouteRead model
     routes: list["Route"]
+
+
+class LocationTimestampReadDetails(BaseLocation):
+    uid: uuid.UUID
+    timestamp: "Timestamp"
 
 
 class Identifier(SQLModel):
@@ -106,10 +129,27 @@ class DataSetReadCompact(BaseDataSet):
 
 
 class DataSetReadDetails(DataSetReadCompact):
+    # TODO: Specify LocationRead model
     locations: list["Location"]
 
 
-class Timestamp(SQLModel, table=True):
+# class OrderBy(str, Enum):
+#     id = "id"
+#     name = "name"
+#     created = "created"
+
+# https://stackoverflow.com/questions/70319235/how-to-add-sortby-and-direction-as-query-parameter-in-fastapi
+
+# class ItemQueryParams(BaseModel):
+#     order_by: OrderBy = OrderBy.id
+#     descending: bool = False
+
+
+class BaseTimestamp(SQLModel):
+    pass
+
+
+class Timestamp(BaseTimestamp, table=True):
     uid: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
@@ -118,6 +158,14 @@ class Timestamp(SQLModel, table=True):
     )
     datetime: dt.datetime = Field(default=None, nullable=True)
     route_uid: uuid.UUID = Field(default=None, foreign_key="route.uid")
+    location_uid: uuid.UUID = Field(default=None, foreign_key="location.uid")
+
+
+class TimestampCreate(BaseTimestamp):
+    uid: uuid.UUID
+    datetime: dt.datetime
+    route_uid: uuid.UUID
+    location_uid: uuid.UUID
 
 
 class BaseRoute(SQLModel):
@@ -135,21 +183,26 @@ class Route(BaseRoute, table=True):
         back_populates="routes", link_model=RouteLocationLink
     )
     workplan_uid: uuid.UUID = Field(default=None, foreign_key="workplan.uid")
+    algorithmrun_uid: uuid.UUID = Field(default=None, foreign_key="algorithmrun.uid")
 
 
-class RouteCreate(BaseDataSet):
-    locations: list["Location"]
-    workplan_uid: str
-
-
-class RouteUpdate(BaseDataSet):
+class RouteCreate(BaseRoute):
+    workplan_uid: uuid.UUID
+    algorithmrun_uid: Optional[uuid.UUID]
+    # TODO: Specify LocationRead model
     locations: Optional[list["Location"]]
 
 
-class RouteRead(BaseDataSet):
+class RouteUpdate(BaseRoute):
+    locations: Optional[list["Location"]]
+
+
+class RouteRead(BaseRoute):
     uid: uuid.UUID
+    # TODO: Specify LocationRead model
     locations: list["Location"]
-    workplan_uid: str
+    workplan_uid: uuid.UUID
+    algorithmrun_uid: uuid.UUID
 
 
 class BaseWorkPlan(SQLModel):
@@ -169,10 +222,18 @@ class WorkPlan(BaseWorkPlan, table=True):
     updated_at: dt.datetime = Field(default_factory=dt.datetime.utcnow, nullable=False)
 
 
-class WorkPlanRead(BaseWorkPlan):
+class WorkPlanReadCompact(BaseWorkPlan):
     uid: uuid.UUID
     updated_at: dt.datetime
+    # TODO: Specify RouteRead model
     routes: list["Route"]
+
+
+class WorkPlanReadDetails(BaseWorkPlan):
+    uid: uuid.UUID
+    updated_at: dt.datetime
+    # TODO: Is RouteRead model correct here?
+    routes: list["RouteRead"]
 
 
 class WorkPlanCreate(BaseWorkPlan):
