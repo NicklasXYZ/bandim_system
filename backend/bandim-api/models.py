@@ -87,9 +87,14 @@ class LocationReadDetails(BaseLocation):
     routes: list["Route"]
 
 
-class LocationTimestampReadDetails(BaseLocation):
-    uid: uuid.UUID
-    timestamp: "Timestamp"
+class LocationTimestampReadDetails(SQLModel):
+    # uid: uuid.UUID
+    location: "LocationReadCompact"
+    # timestamp: "Timestamp"
+    timestamp: dt.datetime
+
+class LocationTimestampCollection(SQLModel):
+    assignments: list[list[LocationTimestampReadDetails]]
 
 
 class Identifier(SQLModel):

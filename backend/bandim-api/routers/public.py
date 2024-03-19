@@ -35,6 +35,7 @@ from models import (
     Timestamp,
     TimestampCreate,
     LocationTimestampReadDetails,
+    LocationTimestampCollection,
 )
 import uuid
 import pandas as pd
@@ -202,6 +203,7 @@ async def read_workplan(
 
 
 # @router.post("/workplans/assign", response_model=WorkPlanRead, tags=["workplans"])
+@router.post("/workplans/assign", response_model=LocationTimestampCollection, tags=["workplans"])
 @router.post("/workplans/assign", tags=["workplans"])
 async def assign_workplan(
     *, session: Session = Depends(get_session), workplan: Identifier
@@ -289,6 +291,7 @@ async def assign_workplan(
     visit_duration = dt.timedelta(seconds=10)
 
     # Add generated routes to the database
+    route_list = []
     for _, _df in merged_dfs.groupby("route"):
 
         primary_keys_list = _df["uid"].to_numpy().tolist()
@@ -331,10 +334,15 @@ async def assign_workplan(
         )
         results = session.exec(query).all()
         locations_with_timestamps = [
-            {"location": result[0], "timestamp": result[1]} for result in results
+            LocationTimestampReadDetails(
+                **{"location": result[0], "timestamp": result[1]}
+            )
+            for result in results
         ]
-        print("locations_with_timestamps: ")
-        print(locations_with_timestamps)
+        # print("locations_with_timestamps: ")
+        # print(locations_with_timestamps)
+        route_list.append(locations_with_timestamps)
+        # LocationTimestampCollection(locations_with_timestamps)
 
     # statement = select(Route).where(Route.workplan_uid == db_workplan.uid)
     # db_routes = session.exec(statement).all()
@@ -346,8 +354,8 @@ async def assign_workplan(
     #     print()
     # return WorkPlanReadDetails(**workplan_dict)
 
-    # LocationTimestampReadDetails
-    return {}
+    return LocationTimestampCollection(assignments=route_list)
+    # return route_list
 
 
 # @router.post("/routes/", response_model=RouteRead, tags=["routes"])
