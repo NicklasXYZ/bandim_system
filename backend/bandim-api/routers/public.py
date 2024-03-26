@@ -202,9 +202,7 @@ async def read_workplan(
     return WorkPlanReadCompact(**workplan_dict)
 
 
-# @router.post("/workplans/assign", response_model=WorkPlanRead, tags=["workplans"])
 @router.post("/workplans/assign", response_model=LocationTimestampCollection, tags=["workplans"])
-@router.post("/workplans/assign", tags=["workplans"])
 async def assign_workplan(
     *, session: Session = Depends(get_session), workplan: Identifier
 ):
@@ -313,8 +311,6 @@ async def assign_workplan(
         default_time = dt.timedelta(seconds=120)
         for _, row in _df.iterrows():
             current_time += default_time + visit_duration * row["demand"]
-            # print(current_time)
-            # print(row)
             timestamp = TimestampCreate(
                 datetime=current_time,
                 route_uid=db_route.uid,
@@ -339,23 +335,8 @@ async def assign_workplan(
             )
             for result in results
         ]
-        # print("locations_with_timestamps: ")
-        # print(locations_with_timestamps)
         route_list.append(locations_with_timestamps)
-        # LocationTimestampCollection(locations_with_timestamps)
-
-    # statement = select(Route).where(Route.workplan_uid == db_workplan.uid)
-    # db_routes = session.exec(statement).all()
-    # workplan_dict = db_workplan.model_dump()
-    # workplan_dict["routes"] = db_routes
-
-    # for route in db_routes:
-    #     print(route.locations)
-    #     print()
-    # return WorkPlanReadDetails(**workplan_dict)
-
     return LocationTimestampCollection(assignments=route_list)
-    # return route_list
 
 
 # @router.post("/routes/", response_model=RouteRead, tags=["routes"])

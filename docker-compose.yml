@@ -14,23 +14,38 @@ services:
   #   env_file:
   #     - ./.env
 
-  db:
-    image: postgres:latest
-    environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: password
-      - POSTGRES_DB: bandim
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  fastapi:
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
     ports:
-      - 5432:5432
+      - "8000:8000"
+    # volumes:
+      # - .:/code
+    # environment:
+    #   - MODULE_NAME=app.main
+    #   - VARIABLE_NAME=app
+    #   - WORKERS_PER_CORE=1
+    #   - WEB_CONCURRENCY=1
+    # command: uvicorn main:app --host 0.0.0.0 --port
 
-  redis:
-    restart: always
-    image: redis:latest
-    container_name: redis
-    ports:
-      - 6379:6379
+  # db:
+  #   image: postgres:latest
+  #   environment:
+  #     - POSTGRES_USER: postgres
+  #     - POSTGRES_PASSWORD: password
+  #     - POSTGRES_DB: bandim
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - 5432:5432
+
+  # redis:
+  #   restart: always
+  #   image: redis:latest
+  #   container_name: redis
+  #   ports:
+  #     - 6379:6379
 
 networks:
   default:

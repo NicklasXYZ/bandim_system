@@ -1,16 +1,6 @@
 from typing import Union
 from fastapi import HTTPException
 import json
-import os
-
-# def get_secret(seret_name: str) -> str:
-#     secret = None
-#     # Read kubernetes secrets from the default directory secrets directory
-#     # mounted by OpenFaaS
-#     # TODO: Error handling... In case a certain secret is not present...
-#     with open(f"/var/openfaas/secrets/{seret_name}") as f:
-#         secret = f.read()
-#     return secret
 
 
 def check_api_key(x_api_key: str, api_key: Union[None, str]) -> None:
@@ -25,7 +15,7 @@ def check_api_key(x_api_key: str, api_key: Union[None, str]) -> None:
 
 def load_cors(PATH: Union[None, str] = None) -> dict:
     if PATH is None:
-        PATH = "./common/cors_config.json"
+        PATH = "./cors_config.json"
     data = {}
     try:
         with open(PATH) as f:
